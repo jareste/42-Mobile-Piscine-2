@@ -8,9 +8,6 @@ class apiCalls {
     final response = await http.get(Uri.parse('http://api.weatherapi.com/v1/current.json?key=$weatherApiKey&q=$cityName'));
     if (response.statusCode == 200) {
       Map<String, dynamic> jsonResponse = json.decode(response.body);
-      print(response.body);
-      print('------------------------------');
-      print(jsonResponse['current']);
       return jsonResponse['current']; 
     } else {
       throw Exception('Failed to load weather from API');
@@ -28,15 +25,18 @@ class apiCalls {
       throw Exception('Failed to load location from API');
     }
   }
-  }
-/*
-  static Future<String> fetchWeather(String geocode) async {
-    final response = await http.get(Uri.parse('https://api.example.com/weather?geocode=$geocode'));
+
+    static Future<List<Map<String, dynamic>>> fetchCities(String query) async {
+    final response = await http.get(Uri.parse('https://us1.locationiq.com/v1/search.php?key=$locationIqApiKey&q=$query&format=json'));
     if (response.statusCode == 200) {
-      Map<String, dynamic> jsonResponse = json.decode(response.body);
-      return Weather.fromJson(jsonResponse); // assuming you have a Weather class that can parse the JSON response
+      List<dynamic> jsonResponse = json.decode(response.body);
+      return jsonResponse.map((item) => {
+        'name': item['display_name'],
+        'lat': item['lat'],
+        'lon': item['lon'],
+      }).toList();
     } else {
-      throw Exception('Failed to load weather from API');
+      throw Exception('Failed to load cities from API');
     }
   }
-*/
+}

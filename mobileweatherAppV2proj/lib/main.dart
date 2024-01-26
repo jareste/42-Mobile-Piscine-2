@@ -61,6 +61,38 @@ class _MyHomePageState extends State<MyHomePage> {
   final _pageController = PageController();
   String _midText = '';
   final TextEditingController _controller = TextEditingController();
+  List<Map<String, dynamic>> _suggestions = [];
+  Map<String, dynamic> _selectedCity = {};
+  bool _isTyping = false;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Add a listener to the FocusNode
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus && _controller.text.isNotEmpty) {
+        fetchWeatherForCity(_controller.text);
+      }
+    });
+  }
+
+  void fetchWeatherForCity(String cityName) async {
+    try {
+      Map<String, dynamic> weatherData = await apiCalls.fetchWeather(cityName);
+      // Update _midText with the weather information
+      setState(() {
+        _midText = 'Weather in $cityName: ${weatherData['temp_c']}°C';
+      });
+    } catch (e) {
+      setState(() {
+        _midText = 'Failed to get weather: $e';
+      });
+    }
+  }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -78,86 +110,103 @@ class _MyHomePageState extends State<MyHomePage> {
             Expanded(
               child: TextField(
                 controller: _controller,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Enter a location...'
-                ),
-                onChanged: (value) {
-                  _midText = value;
-                  setState(() {});
+                focusNode: _focusNode,
+                onChanged: (value) async {
+                  if (value.isNotEmpty) {
+                    try {
+                      _suggestions = await apiCalls.fetchCities(value);
+                      setState(() {
+                        _isTyping = true;
+                      });
+                    } catch (e) {
+                      setState(() {
+                        _suggestions = [];
+                        _isTyping = false;
+                      });
+                    }
+                  } else {
+                    setState(() {
+                      _isTyping = false;
+                    });
+                  }
                 },
               ),
             ),
             IconButton(
               icon: Icon(Icons.location_on),
               onPressed: () async {
-                _midText = 'Geolocating...';
+                _midText = 'Getting weather...';
                 _controller.clear();
                 try {
+                  // Get the current location
                   Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                  // Fetch the weather for the current location
                   String location = await apiCalls.fetchLocation(position.latitude, position.longitude);
-                  _midText = 'Current location: $location';
+                  Map<String, dynamic> weatherData = await apiCalls.fetchWeather(location);
+                  _midText = 'Weather at $location: ${weatherData['temp_c']}°C';
                 } catch (e) {
-                  _midText = 'Failed to get current location: $e';
+                  _midText = 'Failed to get weather: $e';
                 }
                 setState(() {});
               },
             ),
-            /*IconButton(
-              icon: Icon(Icons.location_on),
-              onPressed: () async {
-                _midText = 'Geolocated';
-                _controller.clear();
-                try {
-                  Map<String, dynamic> weatherData = await apiCalls.fetchWeather('Barcelona');
-                  // Do something with weatherData, for example:
-                  _midText = 'Temperature in Barcelona: ${weatherData['temp_c']}°C';
-                } catch (e) {
-                  _midText = 'Failed to load weather data: $e';
-                }
-                setState(() {});
-              },
-            ),*/
           ],
         ),
       ),
-            body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _index = index;
-          });
-        },
-        children: <Widget>[
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text('Currently', style: TextStyle(fontSize: 56, color: Colors.lightBlueAccent),),
-                Text(_midText, style: TextStyle(fontSize: 10, color: Colors.redAccent),),
-              ],
-            ),
+      body: _isTyping
+        ? ListView.builder(
+            itemCount: _suggestions.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(_suggestions[index]['name']),
+                onTap: () async {
+                  setState(() {
+                    _selectedCity = _suggestions[index];
+                    _controller.text = _selectedCity['name'];
+                    _isTyping = false;
+                  });
+                  fetchWeatherForCity(_selectedCity['name']);
+                },
+              );
+            },
+          )
+        : PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _index = index;
+              });
+            },
+            children: <Widget>[
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text('Currently', style: TextStyle(fontSize: 36, color: Colors.lightBlueAccent),),
+                    Text(_midText, style: TextStyle(fontSize: 12, color: Colors.redAccent),),
+                  ],
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text('Today', style: TextStyle(fontSize: 24, color: Colors.purple),),
+                    Text(_midText, style: TextStyle(fontSize: 24, color: Colors.purple),),
+                  ],
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text('Weekly', style: TextStyle(fontSize: 12, color: Colors.red),),
+                    Text(_midText, style: TextStyle(fontSize: 36, color: Colors.lightBlueAccent)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text('Today', style: TextStyle(fontSize: 24, color: Colors.purple),),
-                Text(_midText, style: TextStyle(fontSize: 24, color: Colors.purple),),
-              ],
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text('Weekly', style: TextStyle(fontSize: 10, color: Colors.red),),
-                Text(_midText, style: TextStyle(fontSize: 56, color: Colors.lightBlueAccent)),
-              ],
-            ),
-          ),
-        ],
-      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (index) {
