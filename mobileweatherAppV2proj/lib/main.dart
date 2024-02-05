@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'apiCalls.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+void main() async {
+  await dotenv.load();
   runApp(const MyApp());
 }
 
@@ -60,11 +62,15 @@ class _MyHomePageState extends State<MyHomePage> {
   int _index = 0;
   final _pageController = PageController();
   String _midText = '';
+  String _Currently = 'Currently';
   final TextEditingController _controller = TextEditingController();
   List<Map<String, dynamic>> _suggestions = [];
   Map<String, dynamic> _selectedCity = {};
   bool _isTyping = false;
   final FocusNode _focusNode = FocusNode();
+  List<HourlyData> hourlyWeather = [];
+  String _todayCity = 'Today';
+  List<WeeklyData> weeklyWeather = [];
 
   @override
   void initState() {
@@ -80,19 +86,43 @@ class _MyHomePageState extends State<MyHomePage> {
   void fetchWeatherForCity(String cityName) async {
     try {
       Map<String, dynamic> weatherData = await apiCalls.fetchWeather(cityName);
+      String temperature = weatherData['current']['temp_c'].toString();
+      String weatherDescription = weatherData['current']['condition']['text'];
+      String windSpeed = weatherData['current']['wind_kph'].toString();
+
+      print(cityName);
+      List<String> locationParts = cityName.split(',');
+      String city = locationParts[0];
+      locationParts.removeAt(0);
+      String city2 = locationParts.join(',');
+
+      List<HourlyData> hourlyData = await apiCalls.fetchHourlyData(cityName);
+      weeklyWeather = await apiCalls.fetchWeeklyData(cityName);
       // Update _midText with the weather information
       setState(() {
-        _midText = 'Weather in $cityName: ${weatherData['temp_c']}°C';
+        _Currently = '$city\n'
+            '$city2\n'
+            '$temperature°C\n'
+            '$weatherDescription\n'
+            '$windSpeed km/h';
+        hourlyWeather = hourlyData;
+        _todayCity = '$city\n'
+            '$city2\n';
+      _index = 0;
+      _pageController.animateToPage(0,
+          duration: Duration(milliseconds: 200), curve: Curves.easeIn);
       });
     } catch (e) {
       setState(() {
-        _midText = 'Failed to get weather: $e';
+        _Currently =
+            'Connection to the api failed, please check your internet connection or introduce a valid city and try again';
+        _todayCity =
+            'Connection to the api failed, please check your internet connection or introduce a valid city and try again';
+        weeklyWeather = [];
+        hourlyWeather = [];
       });
     }
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -139,83 +169,146 @@ class _MyHomePageState extends State<MyHomePage> {
                 _controller.clear();
                 try {
                   // Get the current location
-                  Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                  print('lo intento-------------------------------------');
+                  Position position = await Geolocator.getCurrentPosition(
+                      desiredAccuracy: LocationAccuracy.high);
                   // Fetch the weather for the current location
-                  String location = await apiCalls.fetchLocation(position.latitude, position.longitude);
-                  Map<String, dynamic> weatherData = await apiCalls.fetchWeather(location);
-                  _midText = 'Weather at $location: ${weatherData['temp_c']}°C';
+                  String location = await apiCalls.fetchLocation(
+                      position.latitude, position.longitude);
+                  fetchWeatherForCity(location);
+                  // Map<String, dynamic> weatherData =
+                      // await apiCalls.fetchWeather(location);
+                  // _midText = 'Weather at $location: ${weatherData['temp_c']}°C';
                 } catch (e) {
                   _midText = 'Failed to get weather: $e';
                 }
-                setState(() {});
+                setState(() {
+
+                });
               },
             ),
           ],
         ),
       ),
       body: _isTyping
-        ? ListView.builder(
-            itemCount: _suggestions.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(_suggestions[index]['name']),
-                onTap: () async {
-                  setState(() {
-                    _selectedCity = _suggestions[index];
-                    _controller.text = _selectedCity['name'];
-                    _isTyping = false;
-                  });
-                  fetchWeatherForCity(_selectedCity['name']);
-                },
-              );
-            },
-          )
-        : PageView(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _index = index;
-              });
-            },
-            children: <Widget>[
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text('Currently', style: TextStyle(fontSize: 36, color: Colors.lightBlueAccent),),
-                    Text(_midText, style: TextStyle(fontSize: 12, color: Colors.redAccent),),
-                  ],
+          ? ListView.builder(
+              itemCount: _suggestions.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(_suggestions[index]['name']),
+                  onTap: () async {
+                    setState(() {
+                      _selectedCity = _suggestions[index];
+                      _controller.text = _selectedCity['name'];
+                      _isTyping = false;
+                    });
+                    fetchWeatherForCity(_selectedCity['name']);
+                  },
+                );
+              },
+            )
+          : PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _index = index;
+                });
+              },
+              children: <Widget>[
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      // Text(
+                      //   'Currently',
+                      //   style: TextStyle(
+                      //       fontSize: 36, color: Colors.lightBlueAccent),
+                      // ),
+                      Text(
+                        _Currently,
+                        style: TextStyle(fontSize: 26, color: Colors.black),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text('Today', style: TextStyle(fontSize: 24, color: Colors.purple),),
-                    Text(_midText, style: TextStyle(fontSize: 24, color: Colors.purple),),
-                  ],
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        _todayCity,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 18, color: Colors.black),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: hourlyWeather.length,
+                          itemBuilder: (context, index) {
+                            DateTime parsedTime = DateTime.parse(
+                                hourlyWeather[index].time); // parse the time
+                            String formattedTime =
+                                '${parsedTime.hour}:00'; // format the time
+                            return ListTile(
+                              title: Text(formattedTime),
+                              subtitle: Text(
+                                '${hourlyWeather[index].temperature}°C\n'
+                                '${hourlyWeather[index].windSpeed} km/h',
+                              ),
+                              leading: Image.network(hourlyWeather[index]
+                                  .icon), // display the weather icon
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text('Weekly', style: TextStyle(fontSize: 12, color: Colors.red),),
-                    Text(_midText, style: TextStyle(fontSize: 36, color: Colors.lightBlueAccent)),
-                  ],
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        _todayCity,
+                        style: TextStyle(fontSize: 18, color: Colors.black),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: weeklyWeather.length,
+                          itemBuilder: (context, index) {
+                            DateTime parsedDate =
+                                DateTime.parse(weeklyWeather[index].time);
+                            String formattedDate =
+                                '${parsedDate.day}/${parsedDate.month}/${parsedDate.year}';
+                            return ListTile(
+                              title: Text('$formattedDate'),
+                              subtitle: Text(
+                                '${weeklyWeather[index].minTemp}°C\n'
+                                '${weeklyWeather[index].maxTemp}°C',
+                              ),
+                              leading: Image.network(weeklyWeather[index]
+                                  .icon), // display the weather icon
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (index) {
-          _pageController.animateToPage(index, duration: Duration(milliseconds: 200), curve: Curves.easeIn);
+          _pageController.animateToPage(index,
+              duration: Duration(milliseconds: 200), curve: Curves.easeIn);
         },
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.sunny), label: 'Currently'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Today'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Weekly'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), label: 'Today'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month), label: 'Weekly'),
         ],
       ),
     );
