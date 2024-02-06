@@ -107,9 +107,9 @@ class _MyHomePageState extends State<MyHomePage> {
         hourlyWeather = hourlyData;
         _todayCity = '$city\n'
             '$city2\n';
-      _index = 0;
-      _pageController.animateToPage(0,
-          duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+        _index = 0;
+        _pageController.animateToPage(0,
+            duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
       });
     } catch (e) {
       setState(() {
@@ -156,10 +156,26 @@ class _MyHomePageState extends State<MyHomePage> {
                   } else {
                     setState(() {
                       _isTyping = false;
+                      fetchWeatherForCity(value);
+                      print('isTyping: $_isTyping');
+                      _controller.clear();
                     });
                   }
                 },
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () async {
+                _midText = 'Getting weather...';
+                _isTyping = false;
+                try {
+                  fetchWeatherForCity(_controller.text);
+                } catch (e) {
+                  _midText = 'Failed to get weather: $e';
+                }
+                setState(() {});
+              },
             ),
             IconButton(
               icon: const Icon(Icons.location_on),
@@ -175,14 +191,12 @@ class _MyHomePageState extends State<MyHomePage> {
                       position.latitude, position.longitude);
                   fetchWeatherForCity(location);
                   // Map<String, dynamic> weatherData =
-                      // await apiCalls.fetchWeather(location);
+                  // await apiCalls.fetchWeather(location);
                   // _midText = 'Weather at $location: ${weatherData['temp_c']}°C';
                 } catch (e) {
                   _midText = 'Failed to get weather: $e';
                 }
-                setState(() {
-
-                });
+                setState(() {});
               },
             ),
           ],
@@ -268,7 +282,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: <Widget>[
                       Text(
                         _todayCity,
-                        style: const TextStyle(fontSize: 18, color: Colors.black),
+                        style:
+                            const TextStyle(fontSize: 18, color: Colors.black),
                       ),
                       Expanded(
                         child: ListView.builder(
@@ -299,7 +314,8 @@ class _MyHomePageState extends State<MyHomePage> {
         currentIndex: _index,
         onTap: (index) {
           _pageController.animateToPage(index,
-              duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeIn);
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.sunny), label: 'Currently'),
