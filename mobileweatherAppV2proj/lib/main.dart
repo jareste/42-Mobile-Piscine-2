@@ -62,14 +62,14 @@ class _MyHomePageState extends State<MyHomePage> {
   int _index = 0;
   final _pageController = PageController();
   String _midText = '';
-  String _Currently = 'Currently';
+  String _Currently = 'Please search for a city.';
   final TextEditingController _controller = TextEditingController();
   List<Map<String, dynamic>> _suggestions = [];
   Map<String, dynamic> _selectedCity = {};
   bool _isTyping = false;
   final FocusNode _focusNode = FocusNode();
   List<HourlyData> hourlyWeather = [];
-  String _todayCity = 'Today';
+  String _todayCity = 'Please search for a city.';
   List<WeeklyData> weeklyWeather = [];
 
   @override
@@ -90,7 +90,6 @@ class _MyHomePageState extends State<MyHomePage> {
       String weatherDescription = weatherData['current']['condition']['text'];
       String windSpeed = weatherData['current']['wind_kph'].toString();
 
-      print(cityName);
       List<String> locationParts = cityName.split(',');
       String city = locationParts[0];
       locationParts.removeAt(0);
@@ -110,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
             '$city2\n';
       _index = 0;
       _pageController.animateToPage(0,
-          duration: Duration(milliseconds: 200), curve: Curves.easeIn);
+          duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
       });
     } catch (e) {
       setState(() {
@@ -163,13 +162,12 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.location_on),
+              icon: const Icon(Icons.location_on),
               onPressed: () async {
                 _midText = 'Getting weather...';
                 _controller.clear();
                 try {
                   // Get the current location
-                  print('lo intento-------------------------------------');
                   Position position = await Geolocator.getCurrentPosition(
                       desiredAccuracy: LocationAccuracy.high);
                   // Fetch the weather for the current location
@@ -270,7 +268,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: <Widget>[
                       Text(
                         _todayCity,
-                        style: TextStyle(fontSize: 18, color: Colors.black),
+                        style: const TextStyle(fontSize: 18, color: Colors.black),
                       ),
                       Expanded(
                         child: ListView.builder(
@@ -281,7 +279,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             String formattedDate =
                                 '${parsedDate.day}/${parsedDate.month}/${parsedDate.year}';
                             return ListTile(
-                              title: Text('$formattedDate'),
+                              title: Text(formattedDate),
                               subtitle: Text(
                                 '${weeklyWeather[index].minTemp}°C\n'
                                 '${weeklyWeather[index].maxTemp}°C',
@@ -301,9 +299,9 @@ class _MyHomePageState extends State<MyHomePage> {
         currentIndex: _index,
         onTap: (index) {
           _pageController.animateToPage(index,
-              duration: Duration(milliseconds: 200), curve: Curves.easeIn);
+              duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
         },
-        items: [
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.sunny), label: 'Currently'),
           BottomNavigationBarItem(
               icon: Icon(Icons.calendar_today), label: 'Today'),

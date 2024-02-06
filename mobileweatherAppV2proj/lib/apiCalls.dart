@@ -67,7 +67,6 @@ static Future<List<WeeklyData>> fetchWeeklyData(String cityName) async {
     }).toList();
 
     // Print the result to the console
-    print(weeklyDataList);
     print('---> Weekly Data <---');
 
     return weeklyDataList;
@@ -91,8 +90,6 @@ static Future<List<WeeklyData>> fetchWeeklyData(String cityName) async {
   }
 
   static Future<List<Map<String, dynamic>>> fetchCities(String query) async {
-    print('----------------------------------------------');
-    print('locationkey: ' + locationIqApiKey);
     final response = await http.get(Uri.parse(
         'https://us1.locationiq.com/v1/search.php?key=$locationIqApiKey&city=$query&format=json'));
     if (response.statusCode == 200) {
